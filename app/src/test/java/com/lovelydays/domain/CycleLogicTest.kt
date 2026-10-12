@@ -104,6 +104,49 @@ class CycleLogicTest {
     }
 
     @Test
+    fun recordingPeriodStartShiftsTheCycle() {
+        val today = LocalDate.of(2026, 3, 10)
+        val profile = Profile(
+            userId = 3,
+            birth = LocalDate.of(1992, 6, 1),
+            weightKg = 60.0,
+            heightCm = 168.0,
+            lastPeriod = LocalDate.of(2026, 1, 1),
+            cycleLength = 28,
+            periodLength = 5,
+        )
+        val before = ForecastBuilder.build(profile, today)
+        assertEquals("Следующая менструация", before.periodTitle)
+        assertTrue(before.periodBody.contains("26 марта"))
+
+        val started = LocalDate.of(2026, 3, 8)
+        val updated = PeriodStart.apply(profile, started, today)
+        assertTrue(updated is PeriodStart.Result.Updated)
+        val shifted = (updated as PeriodStart.Result.Updated).profile
+        assertEquals(started, shifted.lastPeriod)
+        assertEquals(28, shifted.cycleLength)
+        assertEquals(5, shifted.periodLength)
+
+        val after = ForecastBuilder.build(shifted, today)
+        assertEquals("Сейчас менструация", after.periodTitle)
+        assertTrue(after.periodBody.contains("8 марта"))
+        assertFalse(after.periodBody.contains("26 марта"))
+        assertTrue(after.ovulationBody.contains("22 марта"))
+
+        val cycles = CycleCalculator.project(
+            CycleCalculator.resolve(shifted, today).params,
+            today.plusDays(40),
+        )
+        assertTrue(CycleCalculator.marksOn(started, cycles).contains(Mark.PERIOD))
+        assertTrue(CycleCalculator.marksOn(today, cycles).contains(Mark.PERIOD))
+        assertFalse(CycleCalculator.marksOn(LocalDate.of(2026, 3, 26), cycles).contains(Mark.PERIOD))
+
+        val future = PeriodStart.apply(profile, today.plusDays(1), today)
+        assertTrue(future is PeriodStart.Result.Invalid)
+        assertEquals(IssueCode.DATE_IN_FUTURE, (future as PeriodStart.Result.Invalid).reason)
+    }
+
+    @Test
     fun mondayFirstGridPadsTheMonth() {
         val may = java.time.YearMonth.of(2026, 5)
         val cells = MonthGrid.cells(may)

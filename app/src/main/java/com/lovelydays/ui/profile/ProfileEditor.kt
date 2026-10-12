@@ -61,8 +61,9 @@ class ProfileEditorViewModel(app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch {
             val id = container.session.currentUserId() ?: return@launch
-            val existing = container.users.getProfile(id) ?: return@launch
-            if (!dirty) _state.value = existing.toForm()
+            container.users.observeProfile(id).collect { existing ->
+                if (existing != null && !dirty) _state.value = existing.toForm()
+            }
         }
     }
 

@@ -50,11 +50,14 @@ import com.lovelydays.domain.CycleCalculator
 import com.lovelydays.domain.DayCopy
 import com.lovelydays.domain.Mark
 import com.lovelydays.domain.MonthGrid
+import com.lovelydays.domain.PeriodStart
 import com.lovelydays.domain.Profile
+import com.lovelydays.domain.ProfileValidator
 import com.lovelydays.domain.Russian
 import com.lovelydays.ui.components.Disclaimer
 import com.lovelydays.ui.components.EmbeddedScreen
 import com.lovelydays.ui.components.InsightCard
+import com.lovelydays.ui.components.PrimaryButton
 import com.lovelydays.ui.theme.LocalMarkColors
 import java.time.LocalDate
 import java.time.YearMonth
@@ -66,6 +69,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class DayCell(
     val label: String,
@@ -84,6 +88,10 @@ data class CalendarUiState(
     val cells: List<DayCell> = emptyList(),
     val selectedTitle: String = "",
     val selectedLines: List<String> = emptyList(),
+    val markDateLabel: String = "",
+    val marking: Boolean = false,
+    val markMessage: String? = null,
+    val markFailed: Boolean = false,
 )
 
 class CalendarViewModel(app: Application) : AndroidViewModel(app) {
@@ -91,15 +99,37 @@ class CalendarViewModel(app: Application) : AndroidViewModel(app) {
     private val month = MutableStateFlow(YearMonth.now())
     private val selected = MutableStateFlow(LocalDate.now())
     private val ticks = MutableStateFlow(0)
+    private val marking = MutableStateFlow(false)
+    private val markMessage = MutableStateFlow<String?>(null)
+    private val markFailed = MutableStateFlow(false)
 
-    val ui = combine(ticks, month, selected) { _, visible, day -> visible to day }
-        .flatMapLatest { (visible, day) ->
+    private val monthSelection = combine(ticks, month, selected) { _, visible, day ->
+        visible to day
+    }
+    private val markStatus = combine(marking, markMessage, markFailed) { busy, message, failed ->
+        MarkStatus(busy, message, failed)
+    }
+
+    val ui = combine(monthSelection, markStatus) { selection, status ->
+        MarkInputs(
+            visible = selection.first,
+            day = selection.second,
+            marking = status.busy,
+            message = status.message,
+            failed = status.failed,
+        )
+    }
+        .flatMapLatest { input ->
             container.session.userId.flatMapLatest { id ->
                 if (id == null) {
                     flowOf(CalendarUiState(loading = false, ready = false))
                 } else {
                     container.users.observeProfile(id).map { profile ->
-                        mapCalendar(profile, visible, day)
+                        mapCalendar(profile, input.visible, input.day).copy(
+                            marking = input.marking,
+                            markMessage = input.message,
+                            markFailed = input.failed,
+                        )
                     }
                 }
             }
@@ -123,7 +153,58 @@ class CalendarViewModel(app: Application) : AndroidViewModel(app) {
         selected.value = today
         month.value = YearMonth.from(today)
     }
+
+    fun markPeriodStarted() {
+        if (marking.value) return
+        viewModelScope.launch {
+            marking.value = true
+            markMessage.value = null
+            markFailed.value = false
+            try {
+                val id = container.session.currentUserId()
+                val profile = id?.let { container.users.getProfile(it) }
+                if (id == null || profile == null) {
+                    markFailed.value = true
+                    markMessage.value = "Сначала заполните профиль."
+                    return@launch
+                }
+                val day = selected.value
+                when (val result = PeriodStart.apply(profile, day, LocalDate.now())) {
+                    is PeriodStart.Result.Invalid -> {
+                        markFailed.value = true
+                        markMessage.value = ProfileValidator.message(result.reason)
+                    }
+                    is PeriodStart.Result.Updated -> {
+                        container.users.saveProfile(result.profile)
+                        container.scheduler.reschedule(id)
+                        markFailed.value = false
+                        markMessage.value =
+                            "Записали ${Russian.full(day)} как первый день. Прогноз, календарь и напоминания обновились."
+                    }
+                }
+            } catch (_: Exception) {
+                markFailed.value = true
+                markMessage.value = "Не получилось записать. Попробуйте ещё раз."
+            } finally {
+                marking.value = false
+            }
+        }
+    }
 }
+
+private data class MarkStatus(
+    val busy: Boolean,
+    val message: String?,
+    val failed: Boolean,
+)
+
+private data class MarkInputs(
+    val visible: YearMonth,
+    val day: LocalDate,
+    val marking: Boolean,
+    val message: String?,
+    val failed: Boolean,
+)
 
 private fun mapCalendar(profile: Profile?, month: YearMonth, selected: LocalDate): CalendarUiState {
     if (profile == null) return CalendarUiState(loading = false, ready = false)
@@ -158,6 +239,7 @@ private fun mapCalendar(profile: Profile?, month: YearMonth, selected: LocalDate
         cells = cells,
         selectedTitle = title,
         selectedLines = DayCopy.lines(selected, cycles),
+        markDateLabel = Russian.full(selected),
     )
 }
 
@@ -197,8 +279,36 @@ fun CalendarScreen(vm: CalendarViewModel = viewModel()) {
         when {
             state.loading -> CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             !state.ready -> Text("Заполните профиль, чтобы увидеть календарь.")
-            else -> MonthBoard(state, vm)
+            else -> {
+                PeriodStartAction(state, vm)
+                MonthBoard(state, vm)
+            }
         }
+    }
+}
+
+@Composable
+private fun PeriodStartAction(state: CalendarUiState, vm: CalendarViewModel) {
+    Text(
+        "Отметить, что месячные начались ${state.markDateLabel}. По умолчанию это сегодня — выберите другой день, если начало было раньше.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    PrimaryButton(
+        text = "Месячные начались",
+        loading = state.marking,
+        onClick = vm::markPeriodStarted,
+    )
+    state.markMessage?.let { message ->
+        Text(
+            message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (state.markFailed) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+        )
     }
 }
 

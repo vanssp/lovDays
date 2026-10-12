@@ -62,14 +62,7 @@ object ProfileValidator {
             height !in 130.0..220.0 -> errors[ProfileField.HEIGHT] = IssueCode.HEIGHT_RANGE
         }
 
-        when {
-            lastPeriod == null -> errors[ProfileField.LAST_PERIOD] = IssueCode.REQUIRED
-            lastPeriod.isAfter(today) -> errors[ProfileField.LAST_PERIOD] = IssueCode.DATE_IN_FUTURE
-            birth != null && lastPeriod.isBefore(birth) ->
-                errors[ProfileField.LAST_PERIOD] = IssueCode.PERIOD_BEFORE_BIRTH
-            ChronoUnit.DAYS.between(lastPeriod, today) > 400 ->
-                errors[ProfileField.LAST_PERIOD] = IssueCode.PERIOD_TOO_OLD
-        }
+        periodDateIssue(birth, lastPeriod, today)?.let { errors[ProfileField.LAST_PERIOD] = it }
 
         if (cycleRaw.isNotBlank()) {
             val cycle = cycleRaw.trim().toIntOrNull()
@@ -88,6 +81,14 @@ object ProfileValidator {
         }
 
         return errors
+    }
+
+    fun periodDateIssue(birth: LocalDate?, lastPeriod: LocalDate?, today: LocalDate): IssueCode? = when {
+        lastPeriod == null -> IssueCode.REQUIRED
+        lastPeriod.isAfter(today) -> IssueCode.DATE_IN_FUTURE
+        birth != null && lastPeriod.isBefore(birth) -> IssueCode.PERIOD_BEFORE_BIRTH
+        ChronoUnit.DAYS.between(lastPeriod, today) > 400 -> IssueCode.PERIOD_TOO_OLD
+        else -> null
     }
 
     fun message(code: IssueCode): String = when (code) {
