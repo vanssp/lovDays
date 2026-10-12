@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -62,7 +63,7 @@ fun BrandMark(modifier: Modifier = Modifier, size: Dp = 96.dp) {
     ) {
         Icon(
             painter = painterResource(R.drawable.ic_brand_moon),
-            contentDescription = "Знак lovelyDays",
+            contentDescription = stringResource(R.string.app_name),
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.size(size * 0.56f),
         )
@@ -117,7 +118,10 @@ fun LoadingPane() {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             BrandMark()
-            Text("Открываем lovelyDays…", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Открываем ${stringResource(R.string.app_name)}…",
+                style = MaterialTheme.typography.titleMedium,
+            )
             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
         }
     }

@@ -148,7 +148,7 @@ class SyncViewModel(app: Application) : AndroidViewModel(app) {
                 when (result) {
                     is SyncResult.Removed -> current.copy(
                         busy = false,
-                        message = "Удалили ${result.count} ${Russian.events(result.count)} lovelyDays. Выбор календаря сохранён.",
+                        message = "Удалили ${result.count} ${Russian.events(result.count)} «Эти дни». Выбор календаря сохранён.",
                         error = null,
                     )
                     is SyncResult.Failed -> current.copy(busy = false, error = result.message)
@@ -232,7 +232,7 @@ fun SyncScreen(vm: SyncViewModel = viewModel()) {
                 onClick = vm::sync,
             )
             TextButton(onClick = vm::remove, enabled = !state.busy) {
-                Text("Удалить события lovelyDays")
+                Text("Удалить события «Эти дни»")
             }
         }
         state.message?.let { message ->
@@ -242,7 +242,7 @@ fun SyncScreen(vm: SyncViewModel = viewModel()) {
             Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
         Text(
-            "Свои события помечаем фразой [lovelyDays], пакетом приложения и служебным свойством календаря — удаляются только они.",
+            "Свои события помечаем фразой [Эти дни], пакетом приложения и служебным свойством календаря — удаляются только они.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

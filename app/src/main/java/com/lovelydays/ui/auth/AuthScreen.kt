@@ -15,6 +15,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -24,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lovelydays.LovelyApplication
+import com.lovelydays.R
 import com.lovelydays.data.auth.AuthOutcome
 import com.lovelydays.data.auth.AuthRepository
 import com.lovelydays.ui.components.BrandMark
@@ -96,7 +98,7 @@ fun AuthScreen(vm: AuthViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     InsetScreen {
         BrandMark()
-        Text("lovelyDays", style = MaterialTheme.typography.headlineLarge)
+        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineLarge)
         Text(
             "Календарь цикла. Спокойно, на вашем телефоне, без облака.",
             style = MaterialTheme.typography.bodyLarge,

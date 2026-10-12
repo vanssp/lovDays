@@ -8,10 +8,13 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.HasDefaultViewModelProviderFactory
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lovelydays.LovelyApplication
@@ -75,13 +78,24 @@ fun LovelyApp() {
 
 @Composable
 private fun FreshStore(key: Any, content: @Composable () -> Unit) {
+    val parent = checkNotNull(LocalViewModelStoreOwner.current) {
+        "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
+    }
     val store = remember(key) { ViewModelStore() }
     DisposableEffect(store) {
         onDispose { store.clear() }
     }
-    val owner = remember(store) {
-        object : ViewModelStoreOwner {
+    // A bare ViewModelStoreOwner drops the activity factory, so AndroidViewModel
+    // (auth, profile, and the tabs) cannot be created and the process dies on launch.
+    val owner = remember(store, parent) {
+        object : ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
             override val viewModelStore: ViewModelStore = store
+            override val defaultViewModelProviderFactory: ViewModelProvider.Factory =
+                (parent as? HasDefaultViewModelProviderFactory)?.defaultViewModelProviderFactory
+                    ?: ViewModelProvider.NewInstanceFactory()
+            override val defaultViewModelCreationExtras: CreationExtras =
+                (parent as? HasDefaultViewModelProviderFactory)?.defaultViewModelCreationExtras
+                    ?: CreationExtras.Empty
         }
     }
     CompositionLocalProvider(LocalViewModelStoreOwner provides owner, content = content)

@@ -133,8 +133,8 @@ class DeviceCalendarSync(
 
     private fun findByMarker(): List<Long> {
         val ids = mutableListOf<Long>()
-        val selection = "${CalendarContract.Events.TITLE} LIKE ? AND ${CalendarContract.Events.DESCRIPTION} LIKE ?"
-        val args = arrayOf("lovelyDays:%", "%$MARKER%")
+        val selection = "(${CalendarContract.Events.TITLE} LIKE ? OR ${CalendarContract.Events.TITLE} LIKE ?) AND (${CalendarContract.Events.DESCRIPTION} LIKE ? OR ${CalendarContract.Events.DESCRIPTION} LIKE ?)"
+        val args = arrayOf("$TITLE_PREFIX%", "$LEGACY_TITLE_PREFIX%", "%$MARKER%", "%$LEGACY_MARKER%")
         context.contentResolver.query(
             CalendarContract.Events.CONTENT_URI,
             arrayOf(CalendarContract.Events._ID),
@@ -222,18 +222,18 @@ class DeviceCalendarSync(
         }.take(4)
         val out = mutableListOf<Draft>()
         for (cycle in relevant) {
-            addWindow(out, today, "period-${cycle.index}", "lovelyDays: менструация", periodText(), cycle.period)
-            addDay(out, today, "ovulation-${cycle.index}", "lovelyDays: овуляция", ovulationText(), cycle.ovulation)
-            addWindow(out, today, "mood-${cycle.index}", "lovelyDays: настроение", moodText(), cycle.pmsMood)
+            addWindow(out, today, "period-${cycle.index}", "$TITLE_PREFIX менструация", periodText(), cycle.period)
+            addDay(out, today, "ovulation-${cycle.index}", "$TITLE_PREFIX овуляция", ovulationText(), cycle.ovulation)
+            addWindow(out, today, "mood-${cycle.index}", "$TITLE_PREFIX настроение", moodText(), cycle.pmsMood)
             addWindow(
                 out,
                 today,
                 "mood-mid-${cycle.index}",
-                "lovelyDays: настроение в середине цикла",
+                "$TITLE_PREFIX настроение в середине цикла",
                 midText(),
                 cycle.midCycleMood,
             )
-            addWindow(out, today, "skin-${cycle.index}", "lovelyDays: кожа", skinText(), cycle.skin)
+            addWindow(out, today, "skin-${cycle.index}", "$TITLE_PREFIX кожа", skinText(), cycle.skin)
         }
         return out
     }
@@ -270,7 +270,7 @@ class DeviceCalendarSync(
     private fun skinText() = describe("Дни, когда чуть выше шанс высыпаний: перед менструацией и в её начале.")
 
     private fun describe(what: String): String =
-        "$what\n\nОценка приложения lovelyDays. Не медицинский прогноз и не контрацепция.\n$MARKER"
+        "$what\n\nОценка приложения «Эти дни». Не медицинский прогноз и не контрацепция.\n$MARKER"
 
     private fun utcMillis(date: LocalDate): Long =
         date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
@@ -284,7 +284,10 @@ class DeviceCalendarSync(
     )
 
     companion object {
-        const val MARKER = "[lovelyDays]"
+        const val TITLE_PREFIX = "Эти дни:"
+        const val LEGACY_TITLE_PREFIX = "lovelyDays:"
+        const val MARKER = "[Эти дни]"
+        const val LEGACY_MARKER = "[lovelyDays]"
         const val MARKER_NAME = "com.lovelydays.marker"
         private const val GOOGLE = "com.google"
         const val NO_PERMISSION = "Нет доступа к календарю. Разрешите чтение и запись, чтобы записать события."

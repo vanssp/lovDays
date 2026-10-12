@@ -101,7 +101,7 @@ object ReminderCopy {
         "mood" to "day" -> "Сегодня может меняться настроение"
         "skin" to "eve" -> "Скоро кожа может реагировать сильнее"
         "skin" to "day" -> "Сегодня кожа может быть чувствительнее"
-        else -> "lovelyDays"
+        else -> "Эти дни"
     }
 
     fun body(type: String, phase: String, eventDay: LocalDate): String {

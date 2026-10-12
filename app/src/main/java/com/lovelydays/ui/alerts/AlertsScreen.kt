@@ -133,7 +133,7 @@ fun AlertsScreen(vm: AlertsViewModel = viewModel()) {
                     if (Build.VERSION.SDK_INT >= 33) {
                         "Чтобы присылать напоминания, Android просит разрешение на уведомления."
                     } else {
-                        "Уведомления для lovelyDays выключены в системе."
+                        "Уведомления для «Эти дни» выключены в системе."
                     },
                 )
                 TextButton(

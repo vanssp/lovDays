@@ -24,7 +24,7 @@ data class Forecast(
 
 object ForecastBuilder {
     const val DISCLAIMER =
-        "lovelyDays не медицинское изделие и не средство контрацепции. Все даты — приблизительная оценка по вашим данным."
+        "«Эти дни» не медицинское изделие и не средство контрацепции. Все даты — приблизительная оценка по вашим данным."
 
     fun build(profile: Profile, today: LocalDate = LocalDate.now()): Forecast {
         val resolved = CycleCalculator.resolve(profile, today)

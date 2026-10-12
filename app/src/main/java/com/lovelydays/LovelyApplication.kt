@@ -2,6 +2,7 @@ package com.lovelydays
 
 import android.app.Application
 import android.content.Context
+import androidx.work.Configuration
 import com.lovelydays.data.auth.AuthRepository
 import com.lovelydays.data.calendar.DeviceCalendarSync
 import com.lovelydays.data.db.LovelyDatabase
@@ -31,9 +32,12 @@ class AppContainer(context: Context) {
     }
 }
 
-class LovelyApplication : Application() {
+class LovelyApplication : Application(), Configuration.Provider {
     lateinit var container: AppContainer
         private set
+
+    override val workManagerConfiguration: Configuration =
+        Configuration.Builder().build()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
