@@ -1,0 +1,2 @@
+-keep class com.lovelydays.notify.ReminderWorker { <init>(...); }
+-keep class com.lovelydays.notify.RescheduleWorker { <init>(...); }
